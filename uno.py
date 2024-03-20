@@ -263,7 +263,7 @@ while not current_game["winner"]:
         # It's an AI player, play automatically
         auto_play(current_game, player)
 
-    # Check if anyone won/lost
+    # Check if anyone won
     if check_winner(current_game):
         print(f"[bold green]{current_game['winner']['name']} wins! 🎉")
         break
@@ -275,4 +275,6 @@ while not current_game["winner"]:
 print()
 print("[blue]Final scores:")
 for player in current_game["players"]:
-    print(f"{player['name']}: {sum(card['value'] for card in player['hand'])}")
+    print(
+        f"{player['name']}: {sum(card['value'] for card in player['hand'])} {'🏆' if not len(player['hand']) else ''}"
+    )
