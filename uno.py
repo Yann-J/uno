@@ -121,6 +121,9 @@ def play_card(game, player, card_index, color_override=None):
         # Set the penalty for next player if any
         if card["name"] in ["+2", "+4", "🚫"]:
             game["penalty"] = card["name"]
+        # The reverse acts as a skip if there's only 2 players
+        if card["name"] == "🔄" and len(game["players"]) == 2:
+            game["penalty"] = "🚫"
 
         print(f"{game['players'][player]['name']} played ", end="")
         print_card(card)
