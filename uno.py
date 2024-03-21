@@ -311,6 +311,6 @@ while not game.has_winner():
 
 # Show scores
 print()
-print("[blue]Final scores:")
+print("[bold blue]Final scores:")
 for player in game.players:
     print(f"{player.name}: {player.score()} {'🏆' if player.has_won() else ''}")
