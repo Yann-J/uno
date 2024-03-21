@@ -52,8 +52,8 @@ class UnoCard:
             or self.color == WILDCARD_COLOR
         )
 
-    def print_card(self):
-        print(f"[white on {self.color}]{self.name:^3}")
+    def print_card(self, end="\n"):
+        print(f"[white on {self.color}]{self.name:^3}", end=end)
 
     def __str__(self) -> str:
         return f"{self.name} {self.color}"
@@ -64,13 +64,18 @@ class UnoPlayer:
         self.name = name
         self.hand = []
 
-    def print_hand(self, top_card=None):
+    def print_hand_prompt(self, top_card=None):
         for i, card in enumerate(self.hand):
             if card.can_play(top_card):
                 print(f"[green bold]{i+1:>2}. ", end="")
             else:
                 print(f" x. ", end="")
             card.print_card()
+
+    def show_hand(self):
+        for card in self.hand:
+            card.print_card(end=" ")
+        print()
 
     def can_play(self, top_card):
         return any(card.can_play(top_card) for card in self.hand)
@@ -92,7 +97,7 @@ class UnoPlayer:
         self.hand.append(card)
 
     def has_won(self):
-        return len(self.hand) == 0
+        return self.card_count() == 0
 
     def auto_play(self, game):
         playable_cards = [card for card in self.hand if card.can_play(game.top_card)]
@@ -112,6 +117,9 @@ class UnoPlayer:
     def score(self):
         return sum(card.value for card in self.hand)
 
+    def card_count(self):
+        return len(self.hand)
+
 
 class UnoGame:
     def __init__(self):
@@ -120,7 +128,6 @@ class UnoGame:
         self.top_card = None
         self.current_player_idx = 0
         self.direction = 1
-        self.winner = None
         self.penalty = None
 
     def create_deck(self):
@@ -178,7 +185,6 @@ class UnoGame:
     def has_winner(self):
         for player in self.players:
             if player.has_won():
-                self.winner = player
                 return True
         return False
 
@@ -242,75 +248,90 @@ def prompt_card(player, game):
             print("[red]Invalid input, try again")
 
 
-game = UnoGame()
+try:
+    game = UnoGame()
 
-# Deal cards
-for _ in range(INITIAL_CARDS):
-    for player in range(len(game.players)):
-        game.deal_card_to_player(player)
+    # Deal cards
+    for _ in range(INITIAL_CARDS):
+        for player in range(len(game.players)):
+            game.deal_card_to_player(player)
 
-# Place top card
-game.play_new_card()
+    # Place top card
+    game.play_new_card()
 
-while not game.has_winner():
-    player = game.current_player()
-    print(f"[bold blue]{player.name}'s turn")
+    while not game.has_winner():
+        player = game.current_player()
+        print(f"[bold blue]{player.name}'s turn ({player.card_count()} cards left)")
 
-    # print(current_game)
+        # print(current_game)
 
-    print("Top card: ", end="")
-    game.print_top_card()
+        print("Top card: ", end="")
+        game.print_top_card()
 
-    # Apply penalties if needed
-    if game.penalty is not None:
-        match game.penalty:
-            case 4:
-                print("[red]Penalty: 4 cards 🥵")
-            case 2:
-                print("[red]Penalty: 2 cards 😓")
-            case 0:
-                print("[red]Penalty: Skipping 😔")
-        game.apply_penalty()
-        continue
+        # Apply penalties if needed
+        if game.penalty is not None:
+            match game.penalty:
+                case 4:
+                    print("[red]Penalty: 4 cards 🥵")
+                case 2:
+                    print("[red]Penalty: 2 cards 😓")
+                case 0:
+                    print("[red]Penalty: Skipping 😔")
+            game.apply_penalty()
+            continue
 
-    # Draw if you cannot play anything
-    if not player.can_play(game.top_card):
-        print("[yellow]Can't play, drawing")
-        game.deal_card()
+        # Draw if you cannot play anything
+        if not player.can_play(game.top_card):
+            print("[yellow]Can't play, drawing")
+            game.deal_card()
 
-    # Skip if you still cannot play anything
-    if not player.can_play(game.top_card):
-        print("[yellow]Still can't play, skipping")
+        # Skip if you still cannot play anything
+        if not player.can_play(game.top_card):
+            print("[yellow]Still can't play, skipping")
+            game.next_player()
+            continue
+
+        played_card = None
+        if game.current_player_idx == 0:
+            # It's the only human player, show hand and prompt for play
+            print("Your hand:")
+            player.print_hand_prompt(game.top_card)
+
+            print("[green bold]Which card do you want to play?")
+            idx, color_override = prompt_card(player, game)
+            played_card = player.play_card(idx, game, color_override)
+        else:
+            # It's an AI player, play automatically
+            # input("Press Enter to continue...")
+            played_card = player.auto_play(game)
+
+        if played_card:
+            print(f"{player.name} played: ", end="")
+            played_card.print_card()
+
+        # Check if we need to say UNO
+        if player.card_count() == 1:
+            print(f"[yellow]{player.name} says UNO!")
+
+        # Check if anyone won
+        if player.has_won():
+            print(f"[bold green]{player.name} wins! 🎉")
+            break
+
         game.next_player()
-        continue
 
-    played_card = None
-    if game.current_player_idx == 0:
-        # It's the only human player, show hand and prompt for play
-        print("Your hand:")
-        player.print_hand(game.top_card)
+    # Show scores
+    print()
+    print("[bold blue]Final scores:")
+    for player in game.players:
+        print(
+            f"{player.name}: {player.score()} ",
+            end="",
+        )
+        if player.has_won():
+            print(" 🏆")
+        else:
+            player.show_hand()
 
-        print("[green bold]Which card do you want to play?")
-        idx, color_override = prompt_card(player, game)
-        played_card = player.play_card(idx, game, color_override)
-    else:
-        # It's an AI player, play automatically
-        played_card = player.auto_play(game)
-
-    if played_card:
-        print(f"{player.name} played: ", end="")
-        played_card.print_card()
-
-    # Check if anyone won
-    if game.has_winner():
-        print(f"[bold green]{game.winner.name} wins! 🎉")
-        break
-
-    game.next_player()
-
-
-# Show scores
-print()
-print("[bold blue]Final scores:")
-for player in game.players:
-    print(f"{player.name}: {player.score()} {'🏆' if player.has_won() else ''}")
+except KeyboardInterrupt:
+    print("[red]Game interrupted, exiting...")
