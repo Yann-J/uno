@@ -1,3 +1,5 @@
+import sys
+
 from rich import print
 from random import shuffle, randint
 
@@ -20,23 +22,32 @@ CARD_TYPES = [
     {"name": "🔄", "wildcard": False, "quantity": 2, "value": 20},
     {"name": "🚫", "wildcard": False, "quantity": 2, "value": 20},
     # Black cards
-    {"name": "+4", "wildcard": True, "quantity": 4, "value": 40},
-    {"name": "🌈", "wildcard": True, "quantity": 4, "value": 40},
+    {"name": "+4", "wildcard": True, "quantity": 4, "value": 50},
+    {"name": "🌈", "wildcard": True, "quantity": 4, "value": 50},
 ]
 PLAYERS = [
-    "You",  # The only human player
-    "R2D2",
-    "C3PO",
-    "BB8",
-    "Wall-E",
-    # "Eva",
-    # "Optimus Prime",
-    # "Megatron",
-    # "Bender",
-    # "HAL 9000",
-    # "GLaDOS",
+    # Humans
+    {"name": "You", "strategy": "human"},
+    # Dumb Robots
+    {"name": "R2D2", "strategy": "random"},
+    {"name": "C3PO", "strategy": "random"},
+    {"name": "BB8", "strategy": "random"},
+    {"name": "Bender", "strategy": "random"},
+    # Smart robots
+    {"name": "Wall-E", "strategy": "smart"},
+    {"name": "Optimus Prime", "strategy": "smart"},
+    {"name": "Megatron", "strategy": "smart"},
+    {"name": "HAL 9000", "strategy": "smart"},
+    {"name": "TARS", "strategy": "smart"},
 ]
 INITIAL_CARDS = 7
+n_players = 4
+
+# Get number of players from arguments
+try:
+    n_players = int(sys.argv[1])
+except Exception:
+    pass
 
 
 class UnoCard:
@@ -44,12 +55,22 @@ class UnoCard:
         self.name = name
         self.color = color
         self.value = value
+        self.penalty = None
+
+        match self.name:
+            case "+4":
+                self.penalty = 4
+            case "+2":
+                self.penalty = 2
+            case "🚫":
+                self.penalty = 0
 
     def can_play(self, top_card):
         return (
             self.name == top_card.name
             or self.color == top_card.color
             or self.color == WILDCARD_COLOR
+            or top_card.color == WILDCARD_COLOR  # If the first card is a wildcard
         )
 
     def print_card(self, end="\n"):
@@ -60,9 +81,10 @@ class UnoCard:
 
 
 class UnoPlayer:
-    def __init__(self, name):
+    def __init__(self, name, strategy="smart"):
         self.name = name
         self.hand = []
+        self.strategy = strategy
 
     def print_hand_prompt(self, top_card=None):
         for i, card in enumerate(self.hand):
@@ -99,12 +121,31 @@ class UnoPlayer:
     def has_won(self):
         return self.card_count() == 0
 
+    def card_value(self, card):
+        value = 0
+        match self.strategy:
+            case "random":
+                value = randint(0, 100)
+            case "smart":
+                # Play higher card to reduce points
+                value = card.value
+
+                # Play wildcards last
+                if card.color != WILDCARD_COLOR:
+                    value += 100
+
+                # Play highest penalties first
+                value += card.penalty or 0
+
+        return value
+
     def auto_play(self, game):
         playable_cards = [card for card in self.hand if card.can_play(game.top_card)]
         if playable_cards:
-            # TODO: be smarter, e.g. play the highest value but save wildcards for last...
-            # Play the first eligible one...
             card = playable_cards[0]
+            for c in playable_cards:
+                if self.card_value(c) > self.card_value(card):
+                    card = c
 
             # If the card is a wildcard, choose a random color to play
             color = None
@@ -122,13 +163,17 @@ class UnoPlayer:
 
 
 class UnoGame:
-    def __init__(self):
+    def __init__(self, n_players=len(PLAYERS)):
         self.deck = self.create_deck()
-        self.players = [UnoPlayer(player) for player in PLAYERS]
+        self.players = [
+            UnoPlayer(player["name"], player["strategy"])
+            for player in PLAYERS[:n_players]
+        ]
         self.top_card = None
         self.current_player_idx = 0
         self.direction = 1
         self.penalty = None
+        self.discard_pile = []
 
     def create_deck(self):
         deck = []
@@ -150,19 +195,15 @@ class UnoGame:
     def play_card(self, card):
         # NOTE: we're not checking card legality here, because its color might have been overridden...
         self.top_card = card
+        self.discard_pile.append(card)
 
         # Change game direction if needed
         if card.name == "🔄":
             self.direction *= -1
 
         # Set the penalty for next player if any
-        match card.name:
-            case "+4":
-                self.penalty = 4
-            case "+2":
-                self.penalty = 2
-            case "🚫":
-                self.penalty = 0
+        self.penalty = card.penalty
+
         # The reverse acts as a skip if there's only 2 players
         if card.name == "🔄" and self.player_count() == 2:
             self.penalty = 0
@@ -201,9 +242,13 @@ class UnoGame:
         return False
 
     def draw_card(self):
-        if self.deck and len(self.deck):
-            return self.deck.pop()
-        return None
+        # Shuffle discard pile and use it as the new deck if the deck is empty
+        if not len(self.deck):
+            self.deck = self.discard_pile
+            shuffle(self.deck)
+            self.discard_pile = []
+
+        return self.deck.pop()
 
     def current_player(self):
         return self.players[self.current_player_idx]
@@ -219,6 +264,9 @@ class UnoGame:
 
     def player_count(self):
         return len(self.players)
+
+    def has_cards(self):
+        return self.deck and len(self.deck)
 
 
 def prompt_color():
@@ -252,7 +300,7 @@ def prompt_card(player, game):
 
 
 try:
-    game = UnoGame()
+    game = UnoGame(n_players)
     print(
         f"Starting game with {game.player_count()} players: {', '.join([p.name for p in game.players])}"
     )
@@ -265,7 +313,7 @@ try:
     # Place top card
     game.play_new_card()
 
-    while not game.has_winner():
+    while not game.has_winner() and game.has_cards():
         player = game.current_player()
         print()
         print(f"[bold blue]{player.name}'s turn ({player.card_count()} cards left)")
@@ -299,7 +347,7 @@ try:
             continue
 
         played_card = None
-        if game.current_player_idx == 0:
+        if player.strategy == "human":
             # It's the only human player, show hand and prompt for play
             print("Your hand:")
             player.print_hand_prompt(game.top_card)
