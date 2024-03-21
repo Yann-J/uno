@@ -384,7 +384,7 @@ try:
     for player in game.players:
         score += player.score()
         print(
-            f"{player.name}: {player.score()} ",
+            f"[bold blue]{player.name}[/bold blue]: {player.score()} ",
             end="",
         )
         if player.has_won():
@@ -394,7 +394,7 @@ try:
             player.show_hand()
 
     print()
-    print(f"Total score for {winner.name}: [red]{score}")
+    print(f"Total score for [bold blue]{winner.name}[/bold blue]: [red]{score}")
 
 except KeyboardInterrupt:
     print("[red]Game interrupted, exiting...")

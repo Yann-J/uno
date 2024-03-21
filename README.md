@@ -3,3 +3,7 @@
 This is a CLI Uno game, that supports 1 human user against several bots playing random legal moves.
 
 It was developed to teach my son about Python classes.
+
+## Demo
+
+[![asciicast](https://asciinema.org/a/648097.svg)](https://asciinema.org/a/648097)
