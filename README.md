@@ -6,4 +6,4 @@ It was developed to teach my son about Python classes.
 
 ## Demo
 
-[![asciicast](https://asciinema.org/a/648097.svg)](https://asciinema.org/a/648097)
+[![asciicast](docs/demo.gif)](docs/demo.gif)
