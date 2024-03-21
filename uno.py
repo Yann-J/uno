@@ -131,6 +131,7 @@ class UnoPlayer:
             self.game.play_card(card)
 
             return card
+        return None
 
     def draw_card(self, card):
         """
@@ -257,16 +258,16 @@ class UnoGame:
         self.top_card = card
         self.discard_pile.append(card)
 
-        # Change game direction if needed
-        if card.name == "🔄":
-            self.direction *= -1
-
         # Set the penalty for next player if any
         self.penalty = card.penalty
 
-        # The reverse acts as a skip if there's only 2 players
-        if card.name == "🔄" and self.player_count() == 2:
-            self.penalty = 0
+        # Change game direction if needed
+        if card.name == "🔄":
+            if self.player_count() > 2:
+                self.direction *= -1
+            else:
+                # The reverse card acts as a skip if there's only 2 players
+                self.penalty = 0
 
         return card
 
@@ -301,10 +302,7 @@ class UnoGame:
         """
         Check if any player has won the game
         """
-        for player in self.players:
-            if player.has_won():
-                return True
-        return False
+        return any(player.has_won() for player in self.players)
 
     def next_player(self):
         """
@@ -385,7 +383,8 @@ def prompt_card(player):
 try:
     game = UnoGame(n_players)
     print(
-        f"Starting game with {game.player_count()} players: {', '.join([p.name for p in game.players])}"
+        f"Starting game with {game.player_count()} players:",
+        ", ".join([p.name for p in game.players]),
     )
 
     while not game.has_winner():
@@ -417,7 +416,7 @@ try:
 
         # Skip if you still cannot play anything
         if not player.can_play():
-            print("[yellow]Still can't play, skipping")
+            print("[red]Still can't play, skipping")
             game.next_player()
             continue
 
