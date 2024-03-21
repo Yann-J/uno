@@ -265,9 +265,6 @@ class UnoGame:
     def player_count(self):
         return len(self.players)
 
-    def has_cards(self):
-        return self.deck and len(self.deck)
-
 
 def prompt_color():
     print("[bold green]Choose a color to play:")
@@ -313,7 +310,7 @@ try:
     # Place top card
     game.play_new_card()
 
-    while not game.has_winner() and game.has_cards():
+    while not game.has_winner():
         player = game.current_player()
         print()
         print(f"[bold blue]{player.name}'s turn ({player.card_count()} cards left)")
@@ -381,16 +378,23 @@ try:
 
     # Show scores
     print()
-    print("[bold blue]Final scores:")
+    print("[bold blue]Final penalties:")
+    score = 0
+    winner = None
     for player in game.players:
+        score += player.score()
         print(
             f"{player.name}: {player.score()} ",
             end="",
         )
         if player.has_won():
+            winner = player
             print(" 🏆")
         else:
             player.show_hand()
+
+    print()
+    print(f"Total score for {winner.name}: [red]{score}")
 
 except KeyboardInterrupt:
     print("[red]Game interrupted, exiting...")
