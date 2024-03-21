@@ -164,7 +164,7 @@ class UnoGame:
             case "🚫":
                 self.penalty = 0
         # The reverse acts as a skip if there's only 2 players
-        if card.name == "🔄" and len(self.players) == 2:
+        if card.name == "🔄" and self.player_count() == 2:
             self.penalty = 0
 
         return card
@@ -189,9 +189,9 @@ class UnoGame:
         return False
 
     def next_player(self):
-        self.current_player_idx = (self.current_player_idx + self.direction) % len(
-            self.players
-        )
+        self.current_player_idx = (
+            self.current_player_idx + self.direction
+        ) % self.player_count()
 
     def play_new_card(self):
         card = self.draw_card()
@@ -216,6 +216,9 @@ class UnoGame:
             self.next_player()
             return True
         return False
+
+    def player_count(self):
+        return len(self.players)
 
 
 def prompt_color():
@@ -250,10 +253,13 @@ def prompt_card(player, game):
 
 try:
     game = UnoGame()
+    print(
+        f"Starting game with {game.player_count()} players: {', '.join([p.name for p in game.players])}"
+    )
 
     # Deal cards
     for _ in range(INITIAL_CARDS):
-        for player in range(len(game.players)):
+        for player in range(game.player_count()):
             game.deal_card_to_player(player)
 
     # Place top card
@@ -261,6 +267,7 @@ try:
 
     while not game.has_winner():
         player = game.current_player()
+        print()
         print(f"[bold blue]{player.name}'s turn ({player.card_count()} cards left)")
 
         # print(current_game)
@@ -308,6 +315,10 @@ try:
         if played_card:
             print(f"{player.name} played: ", end="")
             played_card.print_card()
+            if played_card.name == "🔄" and game.player_count() > 2:
+                print(
+                    f"[yellow]Reversing game direction to {'clockwise' if game.direction == 1 else 'counterclockwise'}"
+                )
 
         # Check if we need to say UNO
         if player.card_count() == 1:
