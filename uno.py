@@ -190,7 +190,7 @@ class UnoGame:
     def play_new_card(self):
         card = self.draw_card()
         if card:
-            self.top_card = card
+            self.play_card(card)
             return True
         return False
 
